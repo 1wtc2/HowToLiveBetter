@@ -7,37 +7,15 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: sync-fork-dataset-main
   cancel-in-progress: false
 
 jobs:
-  sync-fork:
+  prepare-sync:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: 同步原始仓库
-        run: |
-          git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
-          git fetch upstream main
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git merge-base --is-ancestor upstream/main HEAD; then
-            echo "Fork 已包含上游最新提交"
-          else
-            git merge --no-edit upstream/main
-            git push origin HEAD:main
-          fi
-
-  sync-dataset:
-    if: github.ref == 'refs/heads/main'
-    needs: sync-fork
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,17 +27,33 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: 合并上游更新到待审改动
+        run: |
+          git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
+          git fetch upstream main
+          if ! git merge-base --is-ancestor upstream/main HEAD; then
+            git merge --no-edit upstream/main
+          else
+            echo "Fork 已包含上游最新提交"
+          fi
+
       - name: 下载并生成数据集
         run: python tools/sync-dataset.py
 
-      - name: 提交数据更新
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
-          if git diff --cached --quiet; then
-            echo "结构化数据没有变化"
-          else
-            git commit -m "chore(data): 同步结构化数据集"
-            git push origin HEAD:main
-          fi
+      - name: 自动创建或更新同步 PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: automation/sync-upstream-data
+          delete-branch: true
+          commit-message: "chore: 同步上游与结构化数据集"
+          title: "自动同步上游与结构化数据集"
+          body: |
+            此 PR 由 GitHub Actions 自动创建或更新。
+
+            - 合并上游 `eternity4719/HowToLiveBetter` 的最新提交
+            - 同步 `sin0317/htlb-dataset` 的结构化数据
+            - 生成 `data/chapter-index.json`
+
+            上游仓库只被读取。所有变更都提交到本仓库的 PR 分支，等待合并到 `main`。
