@@ -41,6 +41,7 @@ jobs:
         run: python tools/sync-dataset.py
 
       - name: 自动创建或更新同步 PR
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -50,10 +51,17 @@ jobs:
           commit-message: "chore: 同步上游与结构化数据集"
           title: "自动同步上游与结构化数据集"
           body: |
-            此 PR 由 GitHub Actions 自动创建或更新。
+            此 PR 由 GitHub Actions 自动创建或更新，并在必要检查通过后自动合并。
 
             - 合并上游 `eternity4719/HowToLiveBetter` 的最新提交
             - 同步 `sin0317/htlb-dataset` 的结构化数据
             - 生成 `data/chapter-index.json`
 
-            上游仓库只被读取。所有变更都提交到本仓库的 PR 分支，等待合并到 `main`。
+            上游仓库只被读取；所有改动只进入本仓库的 `main`。
+
+      - name: 检查通过后自动合并
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        run: gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash --delete-branch
