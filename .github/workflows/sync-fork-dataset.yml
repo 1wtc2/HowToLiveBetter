@@ -1,10 +1,6 @@
-name: 同步上游与结构化数据
+name: 同步上游 fork
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/sync-fork-dataset.yml
   schedule:
     - cron: '23 2 * * *'
   workflow_dispatch:
@@ -14,11 +10,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: sync-fork-dataset-main
+  group: sync-upstream-fork
   cancel-in-progress: false
 
 jobs:
-  prepare-sync:
+  sync-fork:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -27,51 +23,31 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: 清理已合并的初始化分支
-        run: |
-          if git ls-remote --heads --exit-code origin codex/dataset-sync >/dev/null; then
-            git push origin --delete codex/dataset-sync
-          else
-            echo "初始化分支已不存在"
-          fi
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: 合并上游更新到待审改动
+      - name: 准备上游同步
         run: |
           git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
           git fetch upstream main
-          if ! git merge-base --is-ancestor upstream/main HEAD; then
-            git merge --no-edit upstream/main
-          else
+          if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Fork 已包含上游最新提交"
+          else
+            git merge --no-edit upstream/main
           fi
 
-      - name: 下载并生成数据集
-        run: python tools/sync-dataset.py
-
-      - name: 自动创建或更新同步 PR
+      - name: 创建或更新 fork 同步 PR
         id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
-          branch: automation/sync-upstream-data
+          branch: automation/sync-upstream
           delete-branch: true
-          commit-message: "chore: 同步上游与结构化数据集"
-          title: "自动同步上游与结构化数据集"
+          commit-message: "chore: 同步上游 fork"
+          title: "自动同步上游"
           body: |
-            此 PR 由 GitHub Actions 自动创建或更新，并会自动合并。
+            此 PR 由 GitHub Actions 自动创建或更新，随后会自动合并。
+            变更仅同步自 eternity4719/HowToLiveBetter。
 
-            - 合并上游 `eternity4719/HowToLiveBetter` 的最新提交
-            - 同步 `sin0317/htlb-dataset` 的结构化数据
-            - 生成 `data/chapter-index.json`
-
-            上游仓库只被读取；所有改动只进入本仓库的 `main`。
-
-      - name: 自动合并同步 PR
+      - name: 自动合并上游同步 PR
         if: steps.cpr.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
