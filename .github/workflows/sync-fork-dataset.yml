@@ -27,6 +27,14 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: 清理已合并的初始化分支
+        run: |
+          if git ls-remote --heads --exit-code origin codex/dataset-sync >/dev/null; then
+            git push origin --delete codex/dataset-sync
+          else
+            echo "初始化分支已不存在"
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
