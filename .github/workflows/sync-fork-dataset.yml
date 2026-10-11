@@ -1,6 +1,10 @@
 name: 同步上游与结构化数据
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-fork-dataset.yml
   schedule:
     - cron: '23 2 * * *'
   workflow_dispatch:
