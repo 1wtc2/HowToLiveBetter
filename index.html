@@ -1154,7 +1154,7 @@ function apply(){
   const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
   const key = terms.join(' ');
   CUR_TERMS = terms; CUR_KEY = key;
-  let shown = 0, rerender = 0; const perSec = {}, tocSec = {};
+  let shown = 0, rerender = 0, matched = 0; const perSec = {}, tocSec = {};
   for (const card of CARDS){
     const {e, el} = card;
     let ok = true;
@@ -1170,7 +1170,7 @@ function apply(){
     // 目录行不跟章节筛选走：选着第 3 节时点第 5 节的折叠箭头，展开的是第 5 节
     // 符合其他筛选的条目，而不是一块空白。点进去时 gotoItem 会先清掉筛选再跳。
     const a = TOC.get(el.id); if (a && a.hidden === ok) a.hidden = !ok;
-    if (ok) tocSec[e.sec] = (tocSec[e.sec]||0)+1;
+    if (ok){ matched++; tocSec[e.sec] = (tocSec[e.sec]||0)+1; }
     if (ok && state.sec.size && !state.sec.has(e.sec)) ok = false;
     if (el.hidden === ok) el.hidden = !ok;
     if (ok){
@@ -1179,7 +1179,8 @@ function apply(){
     }
   }
   for (const b of BLOCKS){ const n = perSec[b.n]||0; if (b.el.hidden !== (n === 0)) b.el.hidden = n === 0; b.k.textContent = n; }
-  for (const [n, sub] of TOC_SEC){ const none = !tocSec[n]; if (sub.lastElementChild.hidden === none) sub.lastElementChild.hidden = !none; }
+  for (const [n, sub] of TOC_SEC){ const count = tocSec[n]||0, none = count === 0; sub.previousElementSibling.querySelector('i').textContent = count; if (sub.lastElementChild.hidden === none) sub.lastElementChild.hidden = !none; }
+  document.getElementById('f-sec').querySelector('.all i').textContent = matched;
   document.getElementById('cnt').textContent = shown;
   document.getElementById('empty').hidden = shown !== 0;
   syncControls(); writeUrl(); tocSync(spyLast);
