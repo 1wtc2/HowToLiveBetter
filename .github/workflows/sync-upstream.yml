@@ -23,6 +23,12 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      # 上游有新提交时，git merge 会生成合并提交；Runner 必须先配置提交者身份。
+      - name: 配置合并提交身份
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: 准备上游同步
         run: |
           git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
