@@ -31,13 +31,60 @@ jobs:
 
       - name: 准备上游同步
         run: |
+          set -euo pipefail
           git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
           git fetch upstream main
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Fork 已包含上游最新提交"
-          else
-            git merge --no-edit upstream/main
+            exit 0
           fi
+
+          if git merge --no-edit upstream/main; then
+            exit 0
+          fi
+
+          conflict_files="$(git diff --name-only --diff-filter=U)"
+          if [[ -z "$conflict_files" ]]; then
+            echo "上游合并失败，但没有可处理的冲突文件。" >&2
+            exit 1
+          fi
+
+          # 目前 fork 在这两个文件中的定制仅是仓库/Pages 链接；保留上游正文和统计，再恢复 fork 链接。
+          while IFS= read -r path; do
+            case "$path" in
+              README.md|index.html) ;;
+              *)
+                echo "发现未配置自动解决规则的冲突：$path" >&2
+                exit 1
+                ;;
+            esac
+          done <<< "$conflict_files"
+
+          while IFS= read -r path; do
+            git checkout --theirs -- "$path"
+          done <<< "$conflict_files"
+
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = (
+              ("https://github.com/eternity4719/HowToLiveBetter",
+               "https://github.com/1wtc2/HowToLiveBetter"),
+              ("https://eternity4719.github.io/HowToLiveBetter",
+               "https://1wtc2.github.io/HowToLiveBetter"),
+          )
+          for name in ("README.md", "index.html"):
+              path = Path(name)
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding="utf-8")
+              for old, new in replacements:
+                  text = text.replace(old, new)
+              path.write_text(text, encoding="utf-8")
+          PY
+
+          git add -- README.md index.html
+          git commit --no-edit
 
       - name: 创建或更新 fork 同步 PR
         id: cpr
