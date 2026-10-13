@@ -132,10 +132,13 @@ html.dark .switch .sun{display:none} html.dark .switch .moon{display:block}
 .gt{font-size:14px;font-weight:700;color:var(--t1);line-height:24px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:baseline}
 .gt small{font-weight:400;font-size:12px;color:var(--t3)}
 .sec-links{display:flex;flex-direction:column}
-.sec-link{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;font-size:14px;font-weight:500;color:var(--t2);line-height:24px;text-align:left;transition:color .25s;border-radius:0}
+.sec-link{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:4px 0;font-size:14px;font-weight:500;color:var(--t2);line-height:24px;text-align:left;transition:color .25s;border-radius:0}
 .sec-link:hover{color:var(--t1)}
 .sec-link[aria-pressed="true"]{color:var(--brand-1)}
-.sec-link i{font-style:normal;font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums}
+.sec-link i{font-style:normal;font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums;flex:none;min-width:1.6em;text-align:right}
+/* 节名折行时：编号单独一列做悬挂缩进，第二行和节名首字对齐；条数、箭头贴第一行 */
+.sec-link .sn{flex:none;width:1.6em;margin-right:-4px;font-variant-numeric:tabular-nums}
+.sec-link .st{flex:1;min-width:0;text-wrap:pretty}
 .sec-link.all{padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid var(--divider)}
 /* 章节下的条目目录：只展开选中的那节，没选节时展开正在读的那节（issue #38） */
 .toc-sub{display:flex;flex-direction:column;margin:2px 0 8px;border-left:1px solid var(--divider)}
@@ -148,7 +151,7 @@ html.dark .switch .sun{display:none} html.dark .switch .moon{display:block}
 .toc-none{margin:0;padding:3px 0 3px 12px;font-size:13px;line-height:20px;color:var(--t3)}
 /* 折叠箭头：点它只收起或展开目录，不切换章节筛选 */
 .sec-link i{margin-left:auto}
-.sec-link .fold{flex:none;align-self:stretch;display:grid;place-items:center;width:24px;margin:-4px -6px -4px 0;border-radius:4px;color:var(--t3);transition:transform .2s,color .2s}
+.sec-link .fold{flex:none;display:grid;place-items:center;width:24px;height:24px;margin-right:-6px;border-radius:4px;color:var(--t3);transition:transform .2s,color .2s}
 .sec-link .fold:hover{color:var(--t1);background:var(--bg-mute)}
 .sec-link .fold svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;transform:rotate(-90deg);transition:transform .2s}
 .sec-link.open .fold svg{transform:none}
@@ -1060,7 +1063,7 @@ function build(sections){
   fsec.appendChild(allBtn);
   for (const s of sections){
     const b = document.createElement('button'); b.className='sec-link'; b.dataset.v = s.n; b.setAttribute('aria-pressed','false');
-    b.innerHTML = `<span>${s.n}. ${esc(s.title)}</span><i>${s.entries.length}</i><b class="fold" title="展开或收起本节目录"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg></b>`; fsec.appendChild(b);
+    b.innerHTML = `<span class="sn">${s.n}.</span><span class="st">${esc(s.title)}</span><i>${s.entries.length}</i><b class="fold" title="展开或收起本节目录"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg></b>`; fsec.appendChild(b);
     const sub = document.createElement('div'); sub.className = 'toc-sub'; sub.hidden = true;
     for (const e of s.entries){
       const a = document.createElement('a'); a.href = `#e-${e.sec}-${e.n}`; a.dataset.go = `${e.sec}-${e.n}`; a.title = e.title;
