@@ -378,7 +378,8 @@ function renderOut(){
   const good = no.filter(q => q.entry.ratio !== '一般'), disp = no.filter(q => q.entry.dispute);
   const weak = groups.find(r => r.t >= 2 && r.pct < 1);
   let v = `你答了 ${answered} 题，做到 <b>${yes.length}</b> 项，没做到 <b>${no.length}</b> 项。`;
-  if (!no.length) v += '书里这些事你都做到了。';
+  if (answered > 0 && !no.length) v += '书里这些事你都做到了。';
+  else if (!answered) v += '你还没有回答任何具体题目，返回答题后查看分析。';
   if (weak) v += `漏得最多的是「${esc(weak.g.name)}」，${weak.t} 项里做到 ${weak.y} 项。`;
   if (easy.length) v += `没做到的里有 <b>${easy.length}</b> 项一次办完就行，不用改习惯` + (free.length ? `，其中 ${free.length} 项不花钱。` : '。');
   if (disp.length) v += `有 ${disp.length} 项证据有争议，先看原条目的备注再决定。`;
