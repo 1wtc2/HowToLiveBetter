@@ -278,7 +278,7 @@ function parse(md){
     if ((m = /^### (\d+)\. (.+)$/.exec(line)) && sec) { e = {sec, n:+m[1], title:m[2].trim(), human:'', cost:'', grade:'', note:''}; out.push(e); continue; }
     if (!e) continue;
     if ((m = /^\x3c!--\s*成本标签:\s*(.*?)\s*-->/.exec(line))){
-      for (const kv of m[1].split(/\s+/)){ const [k,v] = kv.split('='); e[{'钱':'money','时间':'time','毅力':'will','收益':'level','口径':'lens'}[k]] = v; }
+      for (const kv of m[1].split(/\s+/)){ const [k,v] = kv.split('='); const p = {'钱':'money','时间':'time','毅力':'will','收益':'level','口径':'lens'}[k]; if (p) e[p] = v; }
     }
     else if ((m = /^- 说人话：(.*)$/.exec(line))) e.human = m[1];
     else if ((m = /^- 成本：(.*)$/.exec(line))) e.cost = m[1];
