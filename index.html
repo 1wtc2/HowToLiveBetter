@@ -1157,7 +1157,10 @@ function writeUrl(){
   for (const d of DIMS) if (state[d].size) p.set(d, [...state[d]].join(','));
   if (state.dispute) p.set('dispute','1'); if (state.todo) p.set('todo','1');
   if (PERF.on) p.set('perf','1');
-  const qs = p.toString(); history.replaceState(null, '', (qs ? '?'+qs : location.pathname) + location.hash);
+  const qs = p.toString();
+  const hash = location.hash;
+  const validHash = hash && document.getElementById(hash.slice(1))?.offsetParent ? hash : '';
+  history.replaceState(history.state, '', (qs ? '?'+qs : location.pathname) + validHash);
 }
 function syncControls(){
   document.getElementById('q').value = state.q;
@@ -1278,6 +1281,7 @@ function wire(){
   document.getElementById('reset').addEventListener('click', reset);
   document.getElementById('reset2').addEventListener('click', reset);
   document.addEventListener('keydown', e => {
+    if (!DM.mask.hidden || !TIP.hidden) return;
     if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); document.getElementById('q').focus(); }
     if (e.key === 'Escape') { if (document.activeElement.id === 'q') document.activeElement.blur(); setMenu(false); }
   });
