@@ -972,6 +972,7 @@ function gotoItem(key, fromId){
   if (!el) return;
   if (!el.offsetParent){            // 目标被筛选藏起来了，先把筛选清掉再跳
     state.q = ''; for (const d of DIMS) state[d].clear();
+    state.dispute = false; state.todo = false;
     syncControls(); apply(); writeUrl();
   }
   // 把「从哪跳的」写进当前这条历史记录，再推一条新的，这样浏览器后退键和鼠标侧键
