@@ -70,9 +70,9 @@ jobs:
 
           replacements = (
               ("https://github.com/eternity4719/HowToLiveBetter",
-               "https://github.com/1wtc2/HowToLiveBetter"),
+               "https://github.com/cc-studio-hub/HowToLiveBetter"),
               ("https://eternity4719.github.io/HowToLiveBetter",
-               "https://1wtc2.github.io/HowToLiveBetter"),
+               "https://cc-studio-hub.github.io/HowToLiveBetter"),
           )
           for name in ("README.md", "index.html"):
               path = Path(name)
