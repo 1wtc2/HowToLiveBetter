@@ -3,6 +3,10 @@ name: 同步上游 fork
 on:
   schedule:
     - cron: '23 2 * * *'
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-upstream.yml
   workflow_dispatch:
 
 permissions:
@@ -35,57 +39,79 @@ jobs:
           set -euo pipefail
           git remote add upstream https://github.com/eternity4719/HowToLiveBetter.git
           git fetch upstream main
-          if git merge-base --is-ancestor upstream/main HEAD; then
-            echo "Fork 已包含上游最新提交"
-            exit 0
-          fi
 
-          if git merge --no-edit upstream/main; then
-            exit 0
-          fi
-
-          conflict_files="$(git diff --name-only --diff-filter=U)"
-          if [[ -z "$conflict_files" ]]; then
-            echo "上游合并失败，但没有可处理的冲突文件。" >&2
-            exit 1
-          fi
-
-          # 目前 fork 在这两个文件中的定制仅是仓库/Pages 链接；保留上游正文和统计，再恢复 fork 链接。
-          while IFS= read -r path; do
-            case "$path" in
-              README.md|index.html) ;;
-              *)
-                echo "发现未配置自动解决规则的冲突：$path" >&2
-                exit 1
-                ;;
-            esac
-          done <<< "$conflict_files"
-
-          while IFS= read -r path; do
-            git checkout --theirs -- "$path"
-          done <<< "$conflict_files"
-
+          # 只导入上游文件差异，保留本 fork 的 Actions；GITHUB_TOKEN 无权推送上游工作流修改。
+          # 记录已同步的上游提交，让下次三方合并使用准确的基线，不重复导入旧改动。
           python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
           from pathlib import Path
 
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+
+          state_path = Path(".github/upstream-sync.json")
+          upstream = "eternity4719/HowToLiveBetter"
+          target = git("rev-parse", "upstream/main").decode().strip()
+          if state_path.exists():
+              state = json.loads(state_path.read_text(encoding="utf-8"))
+              if state.get("repository") != upstream:
+                  raise SystemExit("上游同步记录的仓库不匹配")
+              base = state.get("commit", "")
+          else:
+              base = git("merge-base", "HEAD", "upstream/main").decode().strip()
+          if not re.fullmatch(r"[0-9a-f]{40}", base):
+              raise SystemExit("上游同步基线不是有效的提交 SHA")
+          subprocess.run(["git", "merge-base", "--is-ancestor", base, target], check=True)
+          if base == target and state_path.exists():
+              print("Fork 已包含上游最新内容")
+              raise SystemExit(0)
+
+          patch = git(
+              "diff", "--binary", "--full-index", base, target, "--", ".",
+              ":(exclude).github/workflows/**",
+          )
+          if patch:
+              result = subprocess.run(["git", "apply", "--3way", "--index", "-"], input=patch)
+              if result.returncode:
+                  conflicts = [
+                      name.decode("utf-8") for name in
+                      git("diff", "--name-only", "--diff-filter=U", "-z").split(b"\0") if name
+                  ]
+                  if not conflicts or any(name not in {"README.md", "index.html"} for name in conflicts):
+                      raise SystemExit("上游改动无法安全自动合并：" + ", ".join(conflicts))
+                  # 这两个文件的 fork 定制是仓库与 Pages 链接，先取上游内容再恢复链接。
+                  for name in conflicts:
+                      Path(name).write_bytes(git("show", f"{target}:{name}"))
+
+          fork = os.environ["GITHUB_REPOSITORY"]
+          owner, name = fork.split("/", 1)
           replacements = (
-              ("https://github.com/eternity4719/HowToLiveBetter",
-               "https://github.com/cc-studio-hub/HowToLiveBetter"),
+              (f"https://github.com/{upstream}", f"https://github.com/{fork}"),
               ("https://eternity4719.github.io/HowToLiveBetter",
-               "https://cc-studio-hub.github.io/HowToLiveBetter"),
+               f"https://{owner}.github.io/{name}"),
           )
           for name in ("README.md", "index.html"):
-              path = Path(name)
-              if not path.exists():
+              file = Path(name)
+              if not file.exists():
                   continue
-              text = path.read_text(encoding="utf-8")
-              for old, new in replacements:
-                  text = text.replace(old, new)
-              path.write_text(text, encoding="utf-8")
-          PY
+              text = file.read_text(encoding="utf-8")
+              for source, replacement in replacements:
+                  text = text.replace(source, replacement)
+              file.write_text(text, encoding="utf-8")
+              subprocess.run(["git", "add", "--", name], check=True)
 
-          git add -- README.md index.html
-          git commit --no-edit
+          state_path.write_text(
+              json.dumps({"repository": upstream, "branch": "main", "commit": target},
+                         ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          subprocess.run(["git", "add", "--", str(state_path)], check=True)
+          if git("diff", "--cached", "--name-only", "--", ".github/workflows").strip():
+              raise SystemExit("同步补丁意外修改了 fork 的 Actions 配置")
+          PY
 
       - name: 创建或更新 fork 同步 PR
         id: cpr
@@ -99,7 +125,7 @@ jobs:
           title: "自动同步上游"
           body: |
             此 PR 由 GitHub Actions 自动创建或更新，随后会自动合并。
-            变更仅同步自 eternity4719/HowToLiveBetter。
+            内容同步自 eternity4719/HowToLiveBetter，保留本 fork 的 Actions 配置。
 
       - name: 自动合并上游同步 PR
         if: steps.cpr.outputs.pull-request-number != ''

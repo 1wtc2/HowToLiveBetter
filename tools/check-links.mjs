@@ -44,7 +44,7 @@ for (const f of files) {
   });
 }
 // 徽章、检索页自身、Release 下载链接不查：它们不是来源，挂了也会有别的地方先发现。
-const SKIP = /img\.shields\.io|1wtc2\.github\.io|\/releases\/download\/|localhost/;
+const SKIP = /img\.shields\.io|cc-studio-hub\.github\.io|\/releases\/download\/|localhost/;
 // 不少地方政府站还用着老的加密套件或证书链不全，Node 握手直接报错，浏览器却能正常打开。
 // 这类单独一档，不和真正连不上的混在一起。
 const TLS = /^(ERR_SSL_|UNABLE_TO_VERIFY|CERT_|SELF_SIGNED|DEPTH_ZERO)/;
